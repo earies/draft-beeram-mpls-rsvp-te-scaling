@@ -1,0 +1,480 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd"[]>
+<?rfc toc="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<?rfc symrefs="yes" ?>
+<rfc category="std" ipr="trust200902"
+    docName="draft-beeram-mpls-rsvp-te-scaling-00" obsoletes=""
+    updates="" submissionType="IETF" xml:lang="en">
+  <front>
+    <title abbrev="Improving RSVP-TE scalability">Improving RSVP-TE
+        scalability - Recommendations</title>
+    <author initials="V." surname="Beeram"
+        fullname="Vishnu Pavan Beeram" role="editor">
+      <organization>Juniper Networks</organization>
+      <address>
+        <email>vbeeram@juniper.net</email>
+      </address>
+    </author>
+    <author initials="I." surname="Minei" fullname="Ina Minei">
+      <organization>Google, Inc.</organization>
+      <address>
+        <postal>
+          <street>1600 Amphitheatre Parkway</street>
+          <city>Mountain View</city>
+          <region>CA</region>
+          <code>94043</code>
+          <country>US</country>
+        </postal>
+        <email>inaminei@google.com</email>
+      </address>
+    </author>
+    <author initials="Y." surname="Rekhter" fullname="Yakov Rekhter">
+      <organization>Juniper Networks</organization>
+      <address>
+        <postal>
+          <street>1194 N. Mathilda Ave</street>
+          <city>Sunnyvale</city>
+          <region>CA</region>
+          <code>94089</code>
+          <country>US</country>
+        </postal>
+        <email>yakov@juniper.net</email>
+      </address>
+    </author>
+    <author initials="E." surname="Aries" fullname="Ebben Aries">
+      <organization>Facebook</organization>
+      <address>
+        <postal>
+          <street>1 Hacker Way</street>
+          <city>Menlo Park</city>
+          <region>CA</region>
+          <code>94025</code>
+          <country>US</country>
+        </postal>
+        <email>exa@fb.com</email>
+      </address>
+    </author>
+    <author initials="D." surname="Pacella" fullname="Dante Pacella">
+      <organization>Verizon</organization>
+      <address>
+        <email>dante.j.pacella@verizon.com</email>
+      </address>
+    </author>
+    <author initials="M." surname="Jork" fullname="Markus Jork">
+      <organization>Juniper Networks</organization>
+      <address>
+        <postal>
+          <street>1194 N. Mathilda Ave</street>
+          <city>Sunnyvale</city>
+          <region>CA</region>
+          <code>94089</code>
+          <country>US</country>
+        </postal>
+        <email>mjork@juniper.net</email>
+      </address>
+    </author>
+    <date year="2015"/>
+    <area>Routing</area>
+    <workgroup>Network Working Group</workgroup>
+    <keyword>Internet Draft</keyword>
+    <keyword>RSVP</keyword>
+    <keyword>MPLS</keyword>
+    <abstract>
+      <t>
+          RSVP-TE describes the use of standard RSVP to establish Label
+          Switched Paths (LSPs).  As such, RSVP-TE inherited some
+          properties of RSVP that adversely affect its control plane
+          scalability.  Specifically these properties are (a) reliance
+          on periodic refreshes for state synchronization between RSVP
+          neighbors and for recovery from lost RSVP messages, (b)
+          reliance on refresh timeout for stale state cleanup, and (c)
+          lack of any mechanisms by which a receiver of RSVP messages
+          can apply a back pressure to the sender(s) of these messages.
+      </t>
+      <t>
+          Subsequent to RFC2205 and RFC3209 further enhancements to RSVP
+          and RSVP-TE have been developed.  In this document we
+          describe how an implementation of RSVP-TE can use these
+          enhancements to address the above mentioned properties to
+          improve RSVP-TE control plane scalability.
+      </t>
+    </abstract>
+    <note title="Requirements Language">
+      <t>
+        The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and
+        "OPTIONAL" in this document are to be interpreted as described
+        in <xref target="RFC2119">RFC 2119</xref>.
+      </t>
+    </note>
+  </front>
+  <middle>
+    <section title="Introduction" anchor="intro" toc="default">
+      <t>
+          <xref target="RFC3209">RSVP-TE</xref> describes the use of
+          standard <xref target="RFC2205">RSVP</xref> to establish Label
+          Switched Paths (LSPs).  As such, RSVP-TE inherited some
+          properties of RSVP that adversely affect its control plane
+          scalability.  Specifically these properties are (a) reliance
+          on periodic refreshes for state synchronization between RSVP
+          neighbors and for recovery from lost RSVP messages, (b)
+          reliance on refresh timeout for stale state cleanup, and (c)
+          lack of any mechanisms by which a receiver of RSVP messages
+          can apply a back pressure to the sender(s) of these messages.
+          The following elaborates on this.
+      </t>
+        <section title="Reliance on refreshes and refresh timeouts"
+            toc="default">
+            <t>
+                Standard <xref target="RFC2205">RSVP</xref> maintains
+                state via the generation of RSVP Path/Resv refresh
+                messages.  Refresh messages are used to both synchronize
+                state between RSVP neighbors and to recover from lost
+                RSVP messages.  The use of refresh messages to cover
+                many possible failures has resulted in two operational
+                problems.  The first relates to scaling, the second
+                relates to the reliability and latency of RSVP
+                signaling.
+            </t>
+            <t>
+                The scaling problem is linked to the control plane
+                resource requirements of running RSVP-TE.  The resource
+                requirements increase proportionally with the number of
+                LSPs established by RSVP-TE.  Each such LSP requires the
+                generation, transmission, reception and processing of
+                RSVP Path and Resv messages per refresh period.
+                Supporting a large number of LSPs and the corresponding
+                volume of refresh messages, presents a scaling problem
+                for the RSVP-TE control plane.
+            </t>
+            <t>
+                The reliability and latency problem occurs when a
+                triggered (non-refresh) RSVP messages such as Path,
+                Resv, or PathTear is lost in transmission.  Standard
+                <xref target="RFC2205">RSVP</xref> recovers from a lost
+                message via RSVP refresh messages.  In the face of
+                transmission loss of RSVP messages, the end-to-end
+                latency of RSVP signaling, and thus the end-to-end
+                latency of RSVP-TE signaled LSP establishment, is tied
+                to the refresh interval of the Label Switch Routers(s)
+                experiencing the loss.  When end-to-end signaling is
+                limited by the refresh interval, the delay incurred in
+                the establishement or the change of an RSVP-TE signaled
+                LSP may be beyond the range of what is acceptable in
+                practice.  This is because RSVP-TE ultimately controls
+                establishment of the forwarding state required to
+                realize RSVP-TE signaled LSPs.  Thus delay incurred in
+                the establishment or the change of such LSPs results in
+                delaying the data plane convergence, which in turn
+                adversely impacts the services that rely on the data
+                plane.
+            </t>
+            <t>
+                One way to address the scaling problem caused by the
+                refresh volume is to increase the refresh period, "R" as
+                defined in Section 3.7 of <xref target="RFC2205"/>.
+                Increasing the value of R provides linear improvement on
+                RSVP-TE signaling overhead, but at the cost of
+                increasing the time it takes to synchronize state.  For
+                the reasons mentioned in the previous paragraph, in the
+                context of RSVP-TE signaled LSPs increasing the time to
+                synchronize state is not an acceptable option.
+            </t>
+            <t>
+                One way to address the reliability and latency of RSVP
+                signaling is to decrease the refresh period R.
+                Decreasing the value of R increases the probability that
+                state will be installed in the face of message loss, but
+                at the cost of increasing refresh message rate and
+                associated processing requirements, which in turn
+                adversely affects RSVP-TE control plane scalability.
+            </t>
+            <t>
+                An additional problem is the time to clean up the stale
+                state after a tear message is lost.  RSVP does not
+                retransmit ResvTear or PathTear messages.  If the sole
+                tear message transmitted is lost, the stale state will
+                only be cleaned up once the refresh timeout has expired.
+                This may result in resources associated with the stale
+                state being allocated for an unneccesary period of time.
+                Note that even when the refresh period is adjusted, the
+                refresh timeout must still expire since tear messages
+                are not retransmitted.  Decreasing the refresh timeout
+                by decresing the refresh interval will speed up timely
+                stale state cleanup, but at the cost of increasing
+                refresh message rate, which in turn adversely affects
+                RSVP-TE control plane scalability.
+            </t>
+        </section>
+        <section title="Lack of back pressure" toc="default">
+            <t>
+                In standard RSVP and RSVP speaker sends RSVP messages to
+                a peer with no regard for whether the peer's RSVP
+                control plane is busy.  There is no control plane
+                mechanism by which an RSVP speaker may apply back
+                pressure to the peer - "ask" the peer to reduce the rate
+                of rsvp messages that the peer sends to the speaker.
+                RSVP-TE inherited this from standard RSVP.  Lack of such
+                mechanism could result in RSVP-TE control plane
+                congestion.
+            </t>
+            <t>
+                RSVP-TE control plane is especially susceptible to
+                congestion during link/node failures, as such failures
+                produce bursts of RSVP-TE messages: Path/Resv for
+                re-routing LSPs affected by the failures, Path/Resv for
+                setup of new backup LSPs (as required by RSVP-TE Fast
+                Reroute <xref target="RFC4090"/>), Tear/Error messages
+                for the affected LSPs.  Note that the load on the
+                RSVP-TE control plane caused by these bursts is in
+                addition to the load due to the periodic refreshes of
+                Path/Resv messages for the LSPs not affected by the
+                failures.
+            </t>
+            <t>
+                RSVP-TE control plane congestion may result in losses of
+                RSVP messages, which in turn have detrimental effects on
+                the overall system behavior.  Path/Resv refreshes lost
+                by a peer's busy control plane will cause refresh
+                timeout for some or all of its existing RSVP-TE state on
+                the peer, thus inadvertently deleting existing LSPs and
+                disrupting traffic carried over these LSPs.  Triggered
+                Path/Resv lost by a peer's busy control plane may result
+                in failure to establish new backup LSPs used by RSVP-TE
+                Fast Reroute <xref target="RFC4090"/> before the state
+                for the corresponding protected primary LSPs times out,
+                thus defeating the whole purpose of RSVP-TE Fast
+                Reroute.
+            </t>
+        </section>
+    </section>
+    <section title="Recomendations" toc="default">
+      <t>
+          Subsequent to the publication of <xref target="RFC2205"/> and
+          <xref target="RFC3209"/> further enhancements to RSVP and
+          RSVP-TE have been developed.  In this section we describe how
+          these enhancements could be used to address the problems
+          listed in Section 1.
+      </t>
+      <section title="Eliminating reliance on refreshes and refresh
+          timeouts" toc="default">
+          <t>
+              To eliminate reliance on refreshes for both state
+              synchronization between RSVP neighbors and for recovery
+              from lost RSVP messages, as well as to address both the
+              refresh volume and the reliability issues with RSVP
+              mechanisms other than adjusting refresh rate, this
+              document RECOMMENDS the following:
+              <list style="symbols">
+                  <t>
+                      Implement reliable delivery of Path/Resv messages
+                      using the procedures specified in <xref
+                          target="RFC2961"/>.
+                  </t>
+                  <t>
+                      Indicate support for RSVP Refresh Overhead
+                      Reduction Extensions (as specified in Section 2 of
+                      <xref target="RFC2961"/> by default, with the
+                      ability to override the default via configuration.
+                  </t>
+                  <t>
+                      Make the value of the refresh interval
+                      configurable with the default value of 20 minutes.
+                  </t>
+              </list>
+          </t>
+          <t>
+              To eliminate reliance on refresh timeouts, in addtion to
+              the above, this document RECOMMENDS the following:
+              <list style="symbols">
+                  <t>
+                      Implement reliable delivery of Tear/Err messages
+                      using the procedures specified in <xref
+                          target="RFC2961"/>.
+                  </t>
+                  <t>
+                      Implement coupling the state of individual LSPs
+                      with the state of the corresponding RSVP-TE
+                      signaling adjacency.  When and RSVP-TE speaker
+                      detects RSVP-TE signaling adjacency failure, the
+                      speaker MUST clean up the LSP state for all LSPs
+                      affected by the failed adjacency.  The LSP state
+                      is the combination of "path state" maintained as
+                      Path State Block and "reservation state"
+                      maintained as Reservation State Block (see Section
+                      2.1 of <xref target="RFC2205"/>).
+                  </t>
+                  <t>
+                      Use of Node-ID based Hello session (<xref
+                          target="RFC3209"/>, <xref target="RFC4558"/>)
+                      for detection of RSVP-TE signaling adjacency
+                      failures.  Make the value of the node hello
+                      interval <xref target="RFC3209"/> configurable;
+                      increase the default value from 5ms (as specified
+                      in Section 5.3 of <xref target="RFC3209"/> to 9
+                      seconds.
+                  </t>
+                  <t>
+                      Implement Procedures specified in <xref
+                          target="I-D.chandra-mpls-enhanced-frr-bypass"/>
+                      which describes methods to facilitate FRR that
+                      works independently of the refresh-interval.
+                  </t>
+              </list>
+          </t>
+      </section>
+      <section title="Providing the ability to apply back pressure"
+          toc="default">
+          <t>
+              To provide an RSVP speaker with the ability to apply back
+              pressure to its peer(s) to reduce/eliminate RSVP-TE
+              control plane congestions, in addition to the above, this
+              document RECOMMENDS the following:
+              <list style="symbols">
+                  <t>
+                      Use lack of ACKs from a peer as an indication of
+                      peer's RSVP-TE control plane congestion, in which
+                      case the local system SHOULD throttle RSVP-TE
+                      messages to the affected peer.  This has to be
+                      done on a per-peer basis.
+                  </t>
+                  <t>
+                      Retransmit of all RSVP-TE messages using
+                      exponential backoff, as specified in Section 6 of
+                      <xref target="RFC2961"/>.
+                  </t>
+                  <t>
+                      Increase the Retry Limit (Rl), as defined in
+                      Section 6.2 of <xref target="RFC2961"/>, from 3 to
+                      7.
+                  </t>
+                  <t>
+                      Prioritize Tear/Error over trigger Path/Resv sent
+                      to a peer when the local system detects RSVP-TE
+                      control plane congestion in the peer.
+                  </t>
+              </list>
+          </t>
+      </section>
+      <section title="Making Acknowledgements mandatory" toc="default">
+          <t>
+              The reliable message delivery mechanism specified in <xref
+                  target="RFC2961"/> states that "Nodes receiving a
+              non-out of order message containing a MESSAGE_ID object
+              with the ACK_Desired flag set, SHOULD respond with a
+              MESSAGE_ID_ACK object".  To improve predictability of the
+              system in terms of reliable message delivery this document
+              RECOMMENDS that nodes receiving a non-out of order message
+              containing a MESSAGE_ID object with the ACK_Desired flag
+              set, MUST respond with a MESSAGE_ID_ACK object.
+          </t>
+      </section>
+      <section title="Clarifications on reaching Rapid Retry Limit (Rl)"
+          toc="default">
+          <t>
+              According to section 6 of <xref target="RFC2961"/> "The
+              staged retransmission will continue until either an
+              appropriate MESSAGE_ID_ACK object is received, or the
+              rapid retry limit, Rl, has been reached".  The following
+              clarifies what actions, if any, a router should take once
+              Rl has been reached.
+          </t>
+          <t>
+              If it is the retransmission of Tear/Err messages and Rl
+              has been reached, the router need not take any further
+              actions.
+          </t>
+          <t>
+              If it is the retransmission of Path/Resv messages and Rl
+              has been reached, then the router starts periodic
+              retransmission of these messages every 30 seconds.  The
+              retransmitted messages MUST carry MESSAGE_ID object with
+              ACK_Desired flag set.  This periodic retransmission SHOULD
+              continue until an appropriate MESSAGE_ID ACK object is
+              received indicating acknowledgement of the (retransmitted)
+              Path/Resv message.
+          </t>
+      </section>
+      <section title="Avoiding use of Router Alert IP Option"
+          toc="default">
+          <t>
+              In RSVP-TE the Path message is carried in an IP packet
+              that is addressed to the tail end of the LSP that is
+              signaled using this message.  To make all the
+              intermediate/transit LSRs process this message, the IP
+              packet carrying the message includes the Router Alert IP
+              option.  The same applies to the PathTear message.
+          </t>
+          <t>
+              An alternative to relying on the Router Alert IP option is
+              to carry the Path or PathTear message as a sub-message of
+              a Bundle message <xref target="RFC2961"/>, as Bundle
+              messages are "addressed directly to RSVP neighbors" and
+              "SHOULD NOT be sent with the Router Alert IP option in
+              their IP headers" <xref target="RFC2961"/>.  Notice that
+              since a Bundle message could contain only a single
+              sub-message, this approach could be used to send just a
+              single Path or PathTear message.  This document RECOMMENDS
+              implementing support for Bundle messages <xref
+                  target="RFC2961"/>, and carrying Path and PathTear
+              message(s) as sub-messages(s) of a Bundle message.
+          </t>
+      </section>
+      <section title="Checking Data Plane readiness" toc="default">
+          <t>
+              In certain scenarios, like Make-Before-Break (MBB), a
+              router needs to move traffic from an existing LSP to a new
+              LSP in a least disruptive fashion.  To accomplish this the
+              data plane of the new LSP must be operational before the
+              router moves the traffic.
+          </t>
+          <t>
+              A possible mechanism by which the router can determine
+              whether the data plane of the new LSP is operational is
+              specified in <xref
+                  target="I-D.bonica-mpls-self-ping"/>.  This
+              document RECOMMENDS implementing this mechanism and using
+              it whenever the ingress of an LSP needs to check whether
+              the data plane of the LSP is operational.
+          </t>
+      </section>
+    </section>
+    <section title="IANA Considerations" toc="default">
+      <t>
+          This document makes no request of IANA.
+      </t>
+      <t>
+          Note to RFC Editor: this section may be removed on publication
+          as an RFC.
+      </t>
+    </section>
+    <section title="Security Considerations" toc="default">
+        <t>
+            This document does not introduce new security issues.  The
+            security considerations pertaining to the original RSVP
+            protocol <xref target="RFC2205"/> and RSVP-TE <xref
+                target="RFC3209"/> remain relevant.
+        </t>
+    </section>
+    <section title="Acknowledgements" toc="default">
+        <t>
+            Most of the text in Section 1.1 has been taken almost
+            verbatim from <xref target="RFC2961"/>.
+        </t>
+    </section>
+  </middle>
+  <back>
+    <references title="Normative References">
+        <?rfc include="reference.RFC.2119.xml"?>
+        <?rfc include="reference.RFC.2205.xml"?>
+        <?rfc include="reference.RFC.2961.xml"?>
+        <?rfc include="reference.RFC.3209.xml"?>
+        <?rfc include="reference.RFC.4090.xml"?>
+        <?rfc include="reference.RFC.4558.xml"?>
+        <?rfc include="reference.I-D.bonica-mpls-self-ping"?>
+        <?rfc include="reference.I-D.chandra-mpls-enhanced-frr-bypass"?>
+    </references>
+  </back>
+</rfc>
