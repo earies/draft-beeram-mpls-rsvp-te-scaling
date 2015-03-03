@@ -89,9 +89,9 @@
           scalability.  Specifically these properties are (a) reliance
           on periodic refreshes for state synchronization between RSVP
           neighbors and for recovery from lost RSVP messages, (b)
-          reliance on refresh timeout for stale state cleanup, and (c)
+          reliance on refresh timeouts for stale state cleanup, and (c)
           lack of any mechanisms by which a receiver of RSVP messages
-          can apply a back pressure to the sender(s) of these messages.
+          can apply back pressure to the sender(s) of these messages.
       </t>
       <t>
           Subsequent to RFC2205 and RFC3209 further enhancements to RSVP
@@ -122,7 +122,7 @@
           neighbors and for recovery from lost RSVP messages, (b)
           reliance on refresh timeout for stale state cleanup, and (c)
           lack of any mechanisms by which a receiver of RSVP messages
-          can apply a back pressure to the sender(s) of these messages.
+          can apply back pressure to the sender(s) of these messages.
           The following elaborates on this.
       </t>
         <section title="Reliance on refreshes and refresh timeouts"
@@ -151,13 +151,13 @@
             </t>
             <t>
                 The reliability and latency problem occurs when a
-                triggered (non-refresh) RSVP messages such as Path,
+                triggered (non-refresh) RSVP message such as a Path,
                 Resv, or PathTear is lost in transmission.  Standard
                 <xref target="RFC2205">RSVP</xref> recovers from a lost
                 message via RSVP refresh messages.  In the face of
                 transmission loss of RSVP messages, the end-to-end
                 latency of RSVP signaling, and thus the end-to-end
-                latency of RSVP-TE signaled LSP establishment, is tied
+                latency of RSVP-TE signaled LSP establishment is tied
                 to the refresh interval of the Label Switch Routers(s)
                 experiencing the loss.  When end-to-end signaling is
                 limited by the refresh interval, the delay incurred in
@@ -179,7 +179,7 @@
                 RSVP-TE signaling overhead, but at the cost of
                 increasing the time it takes to synchronize state.  For
                 the reasons mentioned in the previous paragraph, in the
-                context of RSVP-TE signaled LSPs increasing the time to
+                context of RSVP-TE signaled LSPs, increasing the time to
                 synchronize state is not an acceptable option.
             </t>
             <t>
@@ -202,7 +202,7 @@
                 Note that even when the refresh period is adjusted, the
                 refresh timeout must still expire since tear messages
                 are not retransmitted.  Decreasing the refresh timeout
-                by decresing the refresh interval will speed up timely
+                by decreasing the refresh interval will speed up timely
                 stale state cleanup, but at the cost of increasing
                 refresh message rate, which in turn adversely affects
                 RSVP-TE control plane scalability.
@@ -210,14 +210,14 @@
         </section>
         <section title="Lack of back pressure" toc="default">
             <t>
-                In standard RSVP and RSVP speaker sends RSVP messages to
+                In standard RSVP, an RSVP speaker sends RSVP messages to
                 a peer with no regard for whether the peer's RSVP
                 control plane is busy.  There is no control plane
                 mechanism by which an RSVP speaker may apply back
-                pressure to the peer - "ask" the peer to reduce the rate
-                of rsvp messages that the peer sends to the speaker.
+                pressure to the peer by asking the peer to reduce the rate
+                of RSVP messages that the peer sends to the speaker.
                 RSVP-TE inherited this from standard RSVP.  Lack of such
-                mechanism could result in RSVP-TE control plane
+                a mechanism could result in RSVP-TE control plane
                 congestion.
             </t>
             <t>
@@ -234,10 +234,10 @@
                 failures.
             </t>
             <t>
-                RSVP-TE control plane congestion may result in losses of
+                RSVP-TE control plane congestion may result in loss of
                 RSVP messages, which in turn have detrimental effects on
                 the overall system behavior.  Path/Resv refreshes lost
-                by a peer's busy control plane will cause refresh
+                by a peer's busy control plane will cause a refresh
                 timeout for some or all of its existing RSVP-TE state on
                 the peer, thus inadvertently deleting existing LSPs and
                 disrupting traffic carried over these LSPs.  Triggered
@@ -265,8 +265,8 @@
               synchronization between RSVP neighbors and for recovery
               from lost RSVP messages, as well as to address both the
               refresh volume and the reliability issues with RSVP
-              mechanisms other than adjusting refresh rate, this
-              document RECOMMENDS the following:
+              mechanisms other than adjusting refresh rate, the
+              following is RECOMMENDED:
               <list style="symbols">
                   <t>
                       Implement reliable delivery of Path/Resv messages
@@ -287,7 +287,7 @@
           </t>
           <t>
               To eliminate reliance on refresh timeouts, in addtion to
-              the above, this document RECOMMENDS the following:
+              the above, the following is RECOMMENDED:
               <list style="symbols">
                   <t>
                       Implement reliable delivery of Tear/Err messages
@@ -330,18 +330,18 @@
           <t>
               To provide an RSVP speaker with the ability to apply back
               pressure to its peer(s) to reduce/eliminate RSVP-TE
-              control plane congestions, in addition to the above, this
-              document RECOMMENDS the following:
+              control plane congestion, in addition to the above, the
+              following is RECOMMENDED:
               <list style="symbols">
                   <t>
-                      Use lack of ACKs from a peer as an indication of
-                      peer's RSVP-TE control plane congestion, in which
-                      case the local system SHOULD throttle RSVP-TE
-                      messages to the affected peer.  This has to be
-                      done on a per-peer basis.
+                      Use the absence of ACKs from a peer as an
+                      indication of congestion on the peer's RSVP-TE
+                      control plane, in which case the local system
+                      SHOULD throttle RSVP-TE messages to the affected
+                      peer. This has to be done on a per-peer basis.
                   </t>
                   <t>
-                      Retransmit of all RSVP-TE messages using
+                      Retransmission of all RSVP-TE messages SHOULD use 
                       exponential backoff, as specified in Section 6 of
                       <xref target="RFC2961"/>.
                   </t>
@@ -365,10 +365,11 @@
               non-out of order message containing a MESSAGE_ID object
               with the ACK_Desired flag set, SHOULD respond with a
               MESSAGE_ID_ACK object".  To improve predictability of the
-              system in terms of reliable message delivery this document
-              RECOMMENDS that nodes receiving a non-out of order message
-              containing a MESSAGE_ID object with the ACK_Desired flag
-              set, MUST respond with a MESSAGE_ID_ACK object.
+              system in terms of reliable message delivery, it is
+              RECOMMENDED that nodes receiving a non-out of order
+              message containing a MESSAGE_ID object with the
+              ACK_Desired flag set MUST respond with a MESSAGE_ID_ACK
+              object.
           </t>
       </section>
       <section title="Clarifications on reaching Rapid Retry Limit (Rl)"
@@ -392,7 +393,7 @@
               retransmission of these messages every 30 seconds.  The
               retransmitted messages MUST carry MESSAGE_ID object with
               ACK_Desired flag set.  This periodic retransmission SHOULD
-              continue until an appropriate MESSAGE_ID ACK object is
+              continue until an appropriate MESSAGE_ID_ACK object is
               received indicating acknowledgement of the (retransmitted)
               Path/Resv message.
           </t>
@@ -416,28 +417,28 @@
               their IP headers" <xref target="RFC2961"/>.  Notice that
               since a Bundle message could contain only a single
               sub-message, this approach could be used to send just a
-              single Path or PathTear message.  This document RECOMMENDS
-              implementing support for Bundle messages <xref
-                  target="RFC2961"/>, and carrying Path and PathTear
-              message(s) as sub-messages(s) of a Bundle message.
+              single Path or PathTear message.  It is RECOMMENDED that
+              support for Bundle messages <xref target="RFC2961"/> be
+              implemented carrying Path and PathTear message(s) as
+              sub-message(s) of a Bundle message.
           </t>
       </section>
       <section title="Checking Data Plane readiness" toc="default">
           <t>
               In certain scenarios, like Make-Before-Break (MBB), a
               router needs to move traffic from an existing LSP to a new
-              LSP in a least disruptive fashion.  To accomplish this the
-              data plane of the new LSP must be operational before the
-              router moves the traffic.
+              LSP in the least disruptive fashion.  To accomplish this
+              the data plane of the new LSP must be operational before
+              the router moves the traffic.
           </t>
           <t>
               A possible mechanism by which the router can determine
               whether the data plane of the new LSP is operational is
               specified in <xref
-                  target="I-D.bonica-mpls-self-ping"/>.  This
-              document RECOMMENDS implementing this mechanism and using
-              it whenever the ingress of an LSP needs to check whether
-              the data plane of the LSP is operational.
+                  target="I-D.bonica-mpls-self-ping"/>.  It is
+              RECOMMENDED that this mechanism be implemented, using it
+              whenever the ingress of an LSP needs to check whether the
+              data plane of the LSP is operational.
           </t>
       </section>
     </section>
@@ -473,8 +474,10 @@
         <?rfc include="reference.RFC.3209.xml"?>
         <?rfc include="reference.RFC.4090.xml"?>
         <?rfc include="reference.RFC.4558.xml"?>
-        <?rfc include="reference.I-D.bonica-mpls-self-ping"?>
         <?rfc include="reference.I-D.chandra-mpls-enhanced-frr-bypass"?>
+    </references>
+    <references title="Informative References">
+        <?rfc include="reference.I-D.bonica-mpls-self-ping"?>
     </references>
   </back>
 </rfc>
