@@ -59,6 +59,13 @@
     <author initials="D." surname="Pacella" fullname="Dante Pacella">
       <organization>Verizon</organization>
       <address>
+        <postal>
+          <street>22001 Loudoun County Parkway</street>
+          <city>Ashburn</city>
+          <region>VA</region>
+          <code>95134</code>
+          <country>US</country>
+        </postal>
         <email>dante.j.pacella@verizon.com</email>
       </address>
     </author>
